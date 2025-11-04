@@ -16,10 +16,10 @@ data preparation, model training, evaluation, and abstention sampling.
 * **Business:** On downstream ranking A/B tests the bounce rate should drop by at least 2 percentage
   points when using Re*Star predictions (proxy targets are used in this repository).
 * **Service SLA:**
-  * Average latency ≤ 200 ms for batch size 1 on CPU inference.
+  * Average latency ≤ 500 ms for batch size 1 on CPU inference.
   * Failed request ratio ≤ 1 %.
   * Memory/CPU usage within deployment SLA.
-* **Model quality:** Accuracy ≥ 90 % on the held-out evaluation split.
+* **Model quality:** Accuracy ≥ 85 % on the held-out evaluation split.
 * **Abstention policy:** Return `abstain` when the maximum softmax probability is below 0.65.
 
 ### Dataset
