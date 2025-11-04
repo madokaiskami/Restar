@@ -1,4 +1,6 @@
-# Re*Star: Reliable Sentiment Re-Rating for Product Reviews
+# Re*Star: Sentiment Re-Rating for Product Reviews
+
+This is a course project of MLops.
 
 Re*Star is a production-style machine learning project that "re-stars" Amazon review text. The
 model predicts the textual sentiment (negative / neutral / positive) for a review and optionally
