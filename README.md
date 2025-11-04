@@ -117,7 +117,11 @@ captured from the benchmark CLI to document the target latencies:
   "batch_size_8": {"p50_ms": 268.7, "p95_ms": 312.5}
 }
 ```
+# Model
+The model was trained so far with ~82% accuracy and 0.67 as f1. You can visit Aurelianous/restar_v1.0_model to see more info about the model.
 
+The eval and dev dataset is in Aurelianous/restar_v1.0_eval. It is a snapshot freezed. In the training process we implement the 
+filter to avoid this part being streamed into the train set.
 
 # Basic evaluation with abstention
 python -m restar.evaluate --config configs/tiny.yaml --text "The vacuum works but the battery is weak."
