@@ -1,0 +1,65 @@
+run_name: "restar_v1.0"
+
+data:
+  categories:
+    - "Amazon_Fashion"
+    - "Books"
+    - "Baby_Products"
+    - "Cell_Phones_and_Accessories"
+    - "Electronics"
+    - "Pet_Supplies"
+    - "Sports_and_Outdoors"
+    - "Health_and_Household"
+  len_each_category: 200000
+
+manifest_path: "data/snapshots/restar_v1.0/MANIFEST.json"
+base_dir: "data/snapshots/restar_v1.0"
+
+
+manifest_path: "data/snapshots/restar_v1.0/MANIFEST.json"
+base_dir: "data/snapshots/restar_v1.0"
+
+  categories: ["Amazon_Fashion", "Books", "Baby_Products", "Cell_Phones_and_Accessories", "Electronics", "Pet_Supplies", "Sports_and_Outdoors", "Sports_and_Outdoors", "Health_and_Household"]
+  len_each_category: 200000
+
+# Location of the MANIFEST (matches the provided directory layout)
+manifest_path: "data/snapshots/restar_v1.0/MANIFEST.json"
+base_dir: "data/snapshots/restar_v1.0"   # Root directory for relative file paths
+
+# Explicit category quotas for stratified reservoir sampling
+categories:
+  - "Amazon_Fashion"
+  - "Books"
+  - "Baby_Products"
+  - "Cell_Phones_and_Accessories"
+  - "Electronics"
+  - "Pet_Supplies"
+  - "Sports_and_Outdoors"
+  - "Health_and_Household"
+
+dev:
+  per_category: 40000
+
+eval:
+  per_category: 120000
+
+seed: 42
+dedup_by_id: true
+id_blocklist_in: []
+dedup_by_id: true              # Deduplicate by stable_id(text, asin)
+id_blocklist_in: []            # Optional additional blocklists to include
+
+out:
+  dev_jsonl: "data/snapshots/restar_v1.0/splits/dev.jsonl"
+  eval_jsonl: "data/snapshots/restar_v1.0/splits/eval.jsonl"
+  dev_parquet: "data/snapshots/restar_v1.0/splits/dev.parquet"
+  eval_parquet: "data/snapshots/restar_v1.0/splits/eval.parquet"
+  manifest_eval: "data/snapshots/restar_v1.0/splits/manifest_eval.json"
+  blocklist_out: "data/blocklists/restar_blocklist_v1.0.txt"
+
+hf:
+  push: true
+  repo_id: "Aurelianous/restar_v1.0_eval"
+  private: true
+  token_env: "HF_TOKEN"
+  commit_message: "Add dev/eval splits for restar_v1.0 (stratified reservoir sampling)"

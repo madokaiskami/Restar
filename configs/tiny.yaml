@@ -1,0 +1,32 @@
+
+run_name: tiny_smoke
+random_seed: 123
+
+data:
+  source: "synthetic"     # synthetic small set for tests
+  categories: ["Synthetic"]
+  len_each_category: 60
+  min_words: 1
+  max_words: 128
+  train_ratio: 0.9
+
+model:
+  pretrained_name: "prajjwal1/bert-tiny"
+  num_labels: 3
+
+train:
+  learning_rate: 5e-5
+  per_device_train_batch_size: 8
+  per_device_eval_batch_size: 8
+  num_train_epochs: 1
+  weight_decay: 0.0
+  warmup_ratio: 0.0
+  logging_steps: 5
+  save_strategy: "no"
+  eval_strategy: "no"
+  max_train_samples: 60
+
+inference:
+  abstain_threshold: 0.5
+
+output_dir: "outputs"

@@ -1,0 +1,120 @@
+run_name: restar_v1_0
+random_seed: 42
+
+data:
+  source: "hf_stream_amazon"
+  categories: ["Amazon_Fashion", "Books", "Baby_Products", "Cell_Phones_and_Accessories", "Electronics", "Pet_Supplies", "Sports_and_Outdoors", "Health_and_Household"]
+
+model:
+  pretrained_name: "distilbert-base-uncased"
+  dropout: 0.1
+  num_labels: 3
+  max_length: 256
+  # Optional warm-start from the Hugging Face Hub
+  init_from_hub: true
+  hub_repo_id: "Aurelianous/restar_v1.0_model"
+  hub_revision: "main"
+
+train:
+  batch_size: 64
+  logging_steps: 50
+  learning_rate: 3.0e-5
+  num_train_epochs: 3
+  weight_decay: 0.01
+  warmup_ratio: 0.06
+  early_stopping_patience: 2
+  class_weights: []
+  sample_weight_column: ""
+  # Push checkpoints to the Hub when available
+  push_to_hub: true
+  hub_model_id: "Aurelianous/restar_v1.0_model"
+  hub_private_repo: false
+  hub_strategy: "every_save"
+  save_total_limit: 2
+
+train_stream:
+  enabled: true
+  source: "hf_stream_amazon"
+  categories:
+    - "Amazon_Fashion"
+    - "Books"
+    - "Baby_Products"
+    - "Cell_Phones_and_Accessories"
+    - "Electronics"
+    - "Pet_Supplies"
+    - "Sports_and_Outdoors"
+    - "Health_and_Household"
+  categories: ["Amazon_Fashion", "Books", "Baby_Products", "Cell_Phones_and_Accessories", "Electronics", "Pet_Supplies", "Sports_and_Outdoors", "Health_and_Household"]
+  per_class_target: 100000
+  hf_shuffle_buffer: 20000
+  seed: 42
+  dedup: true
+  sample_text_min_words: 3
+  stop_when_full: true
+
+# Dev/Eval stay frozen inside the Hugging Face dataset repo
+dev:
+  source: "hf_hub_parquet"
+  hf_repo_id: "Aurelianous/restar_v1.0_eval"
+  hf_glob: "data/dev-*.parquet"
+  hf_revision: "main"
+  max_rows: 0
+
+eval:
+  source: "hf_hub_parquet"
+  hf_repo_id: "Aurelianous/restar_v1.0_eval"
+  hf_glob: "data/eval-*.parquet"
+  hf_revision: "main"
+
+# Blocklists may come from local files or the Hub (best-effort download)
+blocklist:
+  paths: []
+  hf_repo_id: "Aurelianous/restar_v1.0_eval"
+  hf_filename: "data/restar_blocklist_v1.0.txt"
+  hf_revision: "main"
+  hf_token_env: "HF_TOKEN"
+  write_seen_to: "data/blocklists/seen_ids.txt"
+
+abstain_stream:
+  source: "hf_stream_amazon"
+  categories:
+    - "Amazon_Fashion"
+    - "Books"
+    - "Baby_Products"
+    - "Cell_Phones_and_Accessories"
+    - "Electronics"
+    - "Pet_Supplies"
+    - "Sports_and_Outdoors"
+    - "Health_and_Household"
+  stop_when_full: true
+  early_stop_patience_batches: 50
+  max_scanned_total: 300000
+  max_scanned_per_category: 50000
+  max_seconds: 0
+  write_interval_batches: 100
+
+  # Streaming parameters
+  hf_shuffle_buffer: 20000
+  seed: 42
+  sample_text_min_words: 3
+  dedup: true
+  per_pred_quota: "300,500,200"
+  model_dir: "outputs/restar_v1_0/model"
+  max_length: 256
+  batch_size: 64
+  max_length: 256
+  batch_size: 64
+
+  # Selection strategy (choose exactly one)
+  # topk_total: 50000
+  per_pred_quota: 300,500,200
+
+  # Model & inference
+  model_dir: "outputs/restar_v1_0/model"
+  max_length: 256
+  batch_size: 64
+
+  # Outputs
+  out_jsonl: "data/abstain/to_label.jsonl"
+  out_parquet: "data/abstain/to_label.parquet"
+  write_seen_to: "data/blocklists/seen_ids.txt"

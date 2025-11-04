@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt || true
+          pip install ruff
+
+      - name: Lint (ruff)
+        run: |
+          ruff check src tests
+
+      - name: Run unit tests
+        env:
+          PYTHONPATH: src
+        run: |
+          pytest -q
+
+      - name: Smoke training (synthetic)
+        env:
+          PYTHONPATH: src
+          HF_HUB_DISABLE_TELEMETRY: 1
+          TRANSFORMERS_NO_ADVISORY_WARNINGS: 1
+        run: |
+          python -m restar.train --config configs/smoke.yaml --verbose
+
+      - name: Smoke inference benchmark
+        env:
+          PYTHONPATH: src
+        run: |
+          python scripts/bench_infer.py \
+            --model-dir outputs/smoke_ci/model \
+            --warmup 0 \
+            --batch-size 2 \
+            --output outputs/smoke_ci/bench.json
+
+      - name: Re-run unit tests
+        env:
+          PYTHONPATH: src
+        run: |
+          pytest -q
+
+
