@@ -123,6 +123,9 @@ The model was trained so far with ~82% accuracy and 0.67 as f1. You can visit Au
 The eval and dev dataset is in Aurelianous/restar_v1.0_eval. It is a snapshot freezed. In the training process we implement the 
 filter to avoid this part being streamed into the train set.
 
+# Enviroment
+The model was trained with my own 4070TIS
+
 # Basic evaluation with abstention
 python -m restar.evaluate --config configs/tiny.yaml --text "The vacuum works but the battery is weak."
 # Benchmark CPU inference latency (writes outputs/bench.json)
