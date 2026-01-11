@@ -5,6 +5,7 @@ Summary: Re*Star: make reviews' stars consistent with text sentiment, with abste
 Requires-Python: >=3.10
 Requires-Dist: numpy>=1.24
 Requires-Dist: pandas>=1.5
+Requires-Dist: mlflow>=2.12
 Requires-Dist: scikit-learn>=1.3
 Requires-Dist: transformers>=4.36
 Requires-Dist: datasets>=2.16
