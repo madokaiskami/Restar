@@ -38,8 +38,11 @@ jobs:
           PYTHONPATH: src
           HF_HUB_DISABLE_TELEMETRY: 1
           TRANSFORMERS_NO_ADVISORY_WARNINGS: 1
+          MLFLOW_TRACKING_URI: file:${{ github.workspace }}/mlruns
+          MLFLOW_EXPERIMENT_NAME: ci
         run: |
           python -m restar.train --config configs/ci_smoke.yaml --verbose
+
 
       - name: Export TorchServe MAR
         env:
