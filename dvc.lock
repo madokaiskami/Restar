@@ -185,32 +185,32 @@ stages:
       md5: 3f0cf1ead1f6d9b07b2b56c9338b3fdd
       size: 464
   fetch_model:
-    cmd: python -m restar.fetch_pretrained --config configs/dvc_smoke.yaml
+    cmd: python -m restar.fetch_pretrained --config configs/dvc_full.yaml
     deps:
-    - path: configs/dvc_smoke.yaml
+    - path: configs/dvc_full.yaml
       hash: md5
-      md5: 30c26e9ff2717cfbbd60345875a4ef58
-      size: 794
+      md5: b19ad212d11f61a093155ec449b747d0
+      size: 1577
     - path: src/restar/config.py
       hash: md5
-      md5: 1fc19d9f381555a1ea425ee2aad68040
-      size: 625
+      md5: 6b97eefa0034a860485e75d8670fb130
+      size: 605
     - path: src/restar/fetch_pretrained.py
       hash: md5
-      md5: e6f4c2542ca26467253e0d9da74e06bd
-      size: 3049
+      md5: 2fb2f04b89ff6d1f6679614b49654b39
+      size: 2961
     - path: src/restar/utils.py
       hash: md5
-      md5: cd20ff37a714818c5515a67252f3f4c6
-      size: 6057
+      md5: 7f8b0abfa17ed7075d1dc01b0bb6b91e
+      size: 5872
     params:
       params.yaml:
-        restar.dvc_config: configs/dvc_smoke.yaml
+        restar.dvc_config: configs/dvc_full.yaml
     outs:
     - path: artifacts/pretrained/model/
       hash: md5
-      md5: 4c74d287d255f725154d7e8250baee58.dir
-      size: 18495004
+      md5: ecadaafaef69380c20cce78126317e69.dir
+      size: 268780664
       nfiles: 7
   export_torchserve:
     cmd: python tools/export_torchserve.py --model_dir outputs/dvc_run/model 
