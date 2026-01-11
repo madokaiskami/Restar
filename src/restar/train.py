@@ -761,7 +761,11 @@ def main():
         logger.info("Loaded dev dataset from local parquet %s", dev_local_path)
     else:
         if dev_local_path:
-            logger.warning("Dev parquet %s not found; falling back to source loader", dev_local_path)
+            logger.warning(
+                "Dev parquet %s not found; falling back to source loader",
+                dev_local_path,
+            )
+
         dev_ds = load_dev(cfg.dev, block_ids=None)
     dev_max_rows = int(_get(cfg.dev, "max_rows", 0) or 0)
     if dev_max_rows > 0:
