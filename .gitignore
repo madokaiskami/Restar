@@ -12,3 +12,7 @@ torchserve/model-store/*
 !torchserve/model-store/mymodel.mar.dvc
 torchserve/artifacts/model.pt
 dvc_token
+
+mlflow.db
+src/*.egg-info/
+
