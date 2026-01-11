@@ -11,7 +11,7 @@ from typing import Any, Dict, Iterable, List, Optional, Set
 # -*- coding: utf-8 -*-
 """Interactive labeling tool that writes incremental Parquet shards.
 
-* Input: JSONL produced by ``restar.abstain_stream`` (``to_label.jsonl`` or ``*.partial.jsonl``)
+* Input: JSONL produced by ``restar.tools.abstain_stream`` (``to_label.jsonl`` or ``*.partial.jsonl``)
 * Output: ``output/human_labeled/human_labeled-*.parquet``
 * Resumable: previously labeled IDs are skipped automatically
 
@@ -264,7 +264,7 @@ def prompt_label(default_label: Optional[int]) -> Optional[int]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--in_jsonl", required=True, help="JSONL from restar.abstain_stream")
+    parser.add_argument("--in_jsonl", required=True, help="JSONL from restar.tools.abstain_stream")
     parser.add_argument(
         "--out_dir",
         default="output/human_labeled",
@@ -297,7 +297,7 @@ def main() -> None:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--in_jsonl", required=True, help="JSONL from restar.abstain_stream")
+    ap.add_argument("--in_jsonl", required=True, help="JSONL from restar.tools.abstain_stream")
     ap.add_argument("--out_dir", default="output/human_labeled", help="Directory for Parquet shards")
     ap.add_argument("--chunk_size", type=int, default=200, help="Number of rows per Parquet shard")
     ap.add_argument("--max_len", type=int, default=400, help="Truncate display text to this length")

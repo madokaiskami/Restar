@@ -163,7 +163,7 @@ def main():
 
     abst = getattr(cfg, "abstain_stream", None)
     if abst is None:
-        raise RuntimeError("configs/default.yaml is missing an abstain_stream section")
+        raise RuntimeError("configs/dvc_smoke.yaml is missing an abstain_stream section")
 
     cats = list(getattr(abst, "categories", []) or [])
     if not cats:

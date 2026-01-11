@@ -1,0 +1,41 @@
+run_name: dvc_run
+random_seed: 42
+output_dir: "outputs"
+
+model:
+  pretrained_name: "prajjwal1/bert-tiny"
+  pretrained_local_dir: "artifacts/pretrained/model"
+  num_labels: 3
+  max_length: 256
+
+train:
+  batch_size: 8
+  logging_steps: 5
+  learning_rate: 5.0e-5
+  num_train_epochs: 1
+  weight_decay: 0.01
+  warmup_ratio: 0.0
+  eval_strategy: "no"
+  save_strategy: "no"
+  save_total_limit: 2
+  early_stopping_patience: 0
+  push_to_hub: false
+
+train_stream:
+  local_parquet: "data/frozen/train.parquet"
+  max_rows: 500
+  seed: 42
+
+dev:
+  local_parquet: "data/frozen/dev.parquet"
+  max_rows: 200
+  seed: 42
+
+eval:
+  local_parquet: "data/frozen/eval.parquet"
+  max_rows: 200
+  seed: 42
+
+blocklist:
+  paths: ["data/blocklists/restar_blocklist_v1.0.txt"]
+  write_seen_to: "data/blocklists/seen_ids.txt"

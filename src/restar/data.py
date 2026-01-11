@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import fnmatch
 import logging
+import os
 import random
 import re
 from collections import Counter
@@ -20,6 +21,7 @@ __all__ = [
     "load_dev",
     "load_frozen_eval",
     "build_balanced_train_from_hf_stream",
+    "load_local_parquet",
 ]
 
 try:  # Optional dependency for Hugging Face datasets
@@ -213,6 +215,18 @@ def _load_hf_parquet_dataset(repo_id: str, glob_pattern: str, revision: str = "m
                 filler = ["" for _ in range(len(ds))]
             ds = ds.add_column(column, filler)
     return ds
+
+
+def load_local_parquet(path: str, *, with_label: bool = True) -> "Dataset":
+    """Load a local parquet file into a Hugging Face Dataset with required columns."""
+
+    if not path:
+        raise ValueError("path must be provided for local parquet loading")
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"local parquet not found: {path}")
+
+    df = pd.read_parquet(path)
+    return _to_hf(df, with_label=with_label)
 
 
 def load_dev(dev_cfg, block_ids: Optional[Sequence[str]] = None) -> "Dataset":

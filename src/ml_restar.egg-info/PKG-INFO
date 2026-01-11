@@ -3,3 +3,12 @@ Name: ml-restar
 Version: 0.1.0
 Summary: Re*Star: make reviews' stars consistent with text sentiment, with abstention
 Requires-Python: >=3.10
+Requires-Dist: numpy>=1.24
+Requires-Dist: pandas>=1.5
+Requires-Dist: scikit-learn>=1.3
+Requires-Dist: transformers>=4.36
+Requires-Dist: datasets>=2.16
+Requires-Dist: huggingface_hub>=0.20
+Requires-Dist: torch>=2.0
+Requires-Dist: pyarrow>=12
+Requires-Dist: tqdm>=4.66

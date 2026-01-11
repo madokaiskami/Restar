@@ -1,0 +1,10 @@
+data/
+.dvc/cache/
+mlruns/
+outputs/**
+!outputs/
+!outputs/dvc_run/
+!outputs/dvc_run/model/
+!outputs/dvc_run/model/**
+!outputs/dvc_run/model/**/*
+

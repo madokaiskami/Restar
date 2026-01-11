@@ -3,15 +3,21 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import hashlib
+import importlib
+import importlib.util
 import json
 import logging
 import os
 import re
+from collections import Counter
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import torch
 import torch.nn.functional as F
+import yaml
 from huggingface_hub import HfApi, snapshot_download
 from sklearn.metrics import confusion_matrix, f1_score
 from torch.utils.data import DataLoader
@@ -32,7 +38,9 @@ from .data import (
     ensure_no_leakage_between_train_eval,
     load_dev,
     load_frozen_eval,
+    load_local_parquet,
 )
+from .eval_utils import maybe_plot_confusion
 from .utils import maybe_load_blocklist, set_seed, setup_logging
 
 try:
@@ -191,6 +199,96 @@ def _find_latest_checkpoint_dir(root: str) -> Optional[str]:
     return candidates[-1][1]
 
 
+def _flatten_config(cfg) -> Dict[str, Any]:
+    flattened: Dict[str, Any] = {}
+
+    def walk(value: Any, prefix: str) -> None:
+        if isinstance(value, dict):
+            for key, item in value.items():
+                walk(item, f"{prefix}.{key}" if prefix else str(key))
+            return
+        if isinstance(value, list):
+            for idx, item in enumerate(value):
+                walk(item, f"{prefix}.{idx}" if prefix else str(idx))
+            return
+        mapping = _as_mapping(value)
+        if mapping and not isinstance(value, (str, int, float, bool)):
+            for key, item in mapping.items():
+                walk(item, f"{prefix}.{key}" if prefix else str(key))
+            return
+        if prefix:
+            flattened[prefix] = value
+
+    walk(cfg, "")
+    return flattened
+
+
+def _format_param(value: Any) -> str:
+    if value is None:
+        return "null"
+    if isinstance(value, (str, int, float, bool)):
+        return str(value)
+    return json.dumps(value, ensure_ascii=False, default=str)
+
+
+def _load_mlflow():
+    spec = importlib.util.find_spec("mlflow")
+    if spec is None:
+        return None
+    return importlib.import_module("mlflow")
+
+
+def _collect_dvc_tags(lock_path: str) -> Dict[str, str]:
+    if not os.path.exists(lock_path):
+        return {}
+    with open(lock_path, "r", encoding="utf-8") as handle:
+        content = handle.read()
+    tags: Dict[str, str] = {
+        "dvc.lock.sha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+    }
+    data = yaml.safe_load(content) or {}
+    stages = data.get("stages", {})
+    prepare_stage = stages.get("prepare", {})
+    for out in prepare_stage.get("outs", []) or []:
+        path = out.get("path")
+        md5 = out.get("md5")
+        if path and md5:
+            tags[f"dvc.prepare.outs.{path}.md5"] = str(md5)
+    train_stage = stages.get("train", {})
+    for out in train_stage.get("outs", []) or []:
+        path = out.get("path", "")
+        if path.endswith("/model") and out.get("md5"):
+            tags["dvc.train.model.md5"] = str(out["md5"])
+            break
+    return tags
+
+
+def _log_metrics_from_file(mlflow, path: str) -> None:
+    if not os.path.exists(path):
+        return
+    with open(path, "r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    metrics = {k: v for k, v in payload.items() if isinstance(v, (int, float))}
+    if metrics:
+        mlflow.log_metrics(metrics)
+    skipped = [k for k, v in payload.items() if not isinstance(v, (int, float))]
+    if skipped:
+        logger.info("Skipping non-scalar MLflow metrics from %s: %s", path, skipped)
+
+
+def _plot_confusion_from_metrics_file(metrics_path: str, out_path: str) -> bool:
+    if not metrics_path or not os.path.exists(metrics_path):
+        return False
+    try:
+        with open(metrics_path, "r", encoding="utf-8") as handle:
+            metrics = json.load(handle)
+    except Exception as exc:
+        logger.info("Skipping confusion matrix plot from %s: %s", metrics_path, exc)
+        return False
+    maybe_plot_confusion(metrics, out_path)
+    return os.path.exists(out_path)
+
+
 def _resolve_init_from_hub(cfg_model) -> Tuple[Optional[str], Optional[str]]:
     if not _truthy(_get(cfg_model, "init_from_hub", False)):
         return None, None
@@ -207,6 +305,46 @@ def _resolve_init_from_hub(cfg_model) -> Tuple[Optional[str], Optional[str]]:
         return ckpt, ckpt
     logger.info("[hub-init] no checkpoints found; using repo root: %s", local)
     return local, None
+
+
+def _resolve_pretrained_local(cfg_model, pretrained_name: str) -> Optional[str]:
+    local_dir = _get(cfg_model, "pretrained_local_dir", None)
+    if local_dir and os.path.isdir(str(local_dir)):
+        resolved = os.path.abspath(str(local_dir))
+        logger.info("Using local pretrained directory: %s", resolved)
+        return str(local_dir)
+    if local_dir:
+        logger.info(
+            "Configured pretrained_local_dir %s not found; falling back to %s",
+            local_dir,
+            pretrained_name,
+        )
+    return None
+
+
+def _maybe_truncate_dataset(dataset, max_rows: int, name: str):
+    try:
+        limit = int(max_rows or 0)
+    except Exception:
+        return dataset
+    if limit <= 0:
+        return dataset
+    if not hasattr(dataset, "select"):
+        logger.warning("Dataset %s does not support select(); skipping truncation", name)
+        return dataset
+    try:
+        total = len(dataset)
+    except Exception:
+        total = None
+    if total is not None and total <= limit:
+        return dataset
+    truncated = dataset.select(range(limit))
+    try:
+        size = len(truncated)
+    except Exception:
+        size = limit
+    logger.info("Truncated %s dataset to %d rows", name, size)
+    return truncated
 
 
 def create_preprocess_fn(tokenizer, max_length: int = 256):
@@ -453,11 +591,15 @@ def run_basic_training_loop(
 
     total_steps = max(len(train_loader) * int(params["num_train_epochs"]), 1)
     warmup_steps = int(total_steps * float(params.get("warmup_ratio", 0.0)))
-    scheduler = get_linear_schedule_with_warmup(
-        optimizer,
-        num_warmup_steps=warmup_steps,
-        num_training_steps=total_steps,
-    ) if total_steps > 0 else None
+    scheduler = (
+        get_linear_schedule_with_warmup(
+            optimizer,
+            num_warmup_steps=warmup_steps,
+            num_training_steps=total_steps,
+        )
+        if total_steps > 0
+        else None
+    )
 
     weight_tensor = None
     if class_weights:
@@ -558,7 +700,6 @@ def run_basic_training_loop(
         logger.warning("Frozen eval skipped: dataset unavailable")
 
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
@@ -567,7 +708,8 @@ def main():
 
     cfg = load_config(args.config)
     run_name = getattr(cfg, "run_name", "restar_run")
-    out_dir = os.path.join("outputs", run_name)
+    output_root = getattr(cfg, "output_dir", "outputs")
+    out_dir = os.path.join(output_root, run_name)
     model_dir = os.path.join(out_dir, "model")
     os.makedirs(model_dir, exist_ok=True)
 
@@ -584,23 +726,75 @@ def main():
     if train_stream_cfg is None:
         raise ValueError("Configuration is missing the 'train_stream' section")
 
-    train_ds, class_counts = build_balanced_train_from_hf_stream(
-        train_stream_cfg,
-        block_ids=block_ids,
-    )
-    logger.info("Per-class counts from streaming sampler: %s", class_counts)
+    train_local_path = _get(train_stream_cfg, "local_parquet", None)
+    if train_local_path and os.path.exists(str(train_local_path)):
+        train_ds = load_local_parquet(str(train_local_path), with_label=True)
+        class_counts = Counter(train_ds["label"]) if "label" in train_ds.column_names else {}
+        logger.info(
+            "Loaded train dataset from local parquet %s with counts=%s",
+            train_local_path,
+            class_counts,
+        )
+    else:
+        if train_local_path:
+            logger.warning(
+                "Train parquet %s not found; falling back to streaming config",
+                train_local_path,
+            )
+        train_ds, class_counts = build_balanced_train_from_hf_stream(
+            train_stream_cfg,
+            block_ids=block_ids,
+        )
+        logger.info("Per-class counts from streaming sampler: %s", class_counts)
+
+    train_max_rows = int(_get(train_stream_cfg, "max_rows", 0) or 0)
+    if train_max_rows > 0:
+        train_ds = _maybe_truncate_dataset(train_ds, train_max_rows, "train")
+        if "label" in train_ds.column_names:
+            class_counts = Counter(train_ds["label"])
 
     class_weights = resolve_class_weights(getattr(cfg, "train", None), class_counts)
 
-    dev_ds = load_dev(cfg.dev, block_ids=None)
+    dev_local_path = _get(cfg.dev, "local_parquet", None)
+    if dev_local_path and os.path.exists(str(dev_local_path)):
+        dev_ds = load_local_parquet(str(dev_local_path), with_label=True)
+        logger.info("Loaded dev dataset from local parquet %s", dev_local_path)
+    else:
+        if dev_local_path:
+            logger.warning("Dev parquet %s not found; falling back to source loader", dev_local_path)
+        dev_ds = load_dev(cfg.dev, block_ids=None)
+    dev_max_rows = int(_get(cfg.dev, "max_rows", 0) or 0)
+    if dev_max_rows > 0:
+        dev_ds = _maybe_truncate_dataset(dev_ds, dev_max_rows, "dev")
 
     eval_cfg = getattr(cfg, "eval", None)
     frozen_eval_raw = None
     if eval_cfg is not None:
-        try:
-            frozen_eval_raw = load_frozen_eval(eval_cfg, block_ids=None)
-        except Exception as exc:  # pragma: no cover - depends on external data
-            logger.warning("Frozen eval load failed: %s", exc)
+        eval_local_path = _get(eval_cfg, "local_parquet", None)
+        if eval_local_path and os.path.exists(str(eval_local_path)):
+            try:
+                frozen_eval_raw = load_local_parquet(str(eval_local_path), with_label=True)
+                logger.info("Loaded eval dataset from local parquet %s", eval_local_path)
+            except Exception as exc:  # pragma: no cover - depends on local files
+                logger.warning("Local eval parquet load failed: %s", exc)
+        else:
+            if eval_local_path:
+                logger.warning(
+                    "Eval parquet %s not found; falling back to source loader",
+                    eval_local_path,
+                )
+            try:
+                frozen_eval_raw = load_frozen_eval(eval_cfg, block_ids=None)
+            except Exception as exc:  # pragma: no cover - depends on external data
+                logger.warning("Frozen eval load failed: %s", exc)
+
+        eval_max_rows = int(_get(eval_cfg, "max_rows", 0) or 0)
+        if frozen_eval_raw is not None and eval_max_rows > 0:
+            frozen_eval_raw = _maybe_truncate_dataset(
+                frozen_eval_raw,
+                eval_max_rows,
+                "eval",
+            )
 
     if frozen_eval_raw is not None:
         guard_stats = ensure_no_leakage_between_train_eval(train_ds, frozen_eval_raw)
@@ -610,11 +804,13 @@ def main():
             guard_stats["eval_rows"],
         )
 
-    init_dir, resume_ckpt = _resolve_init_from_hub(cfg.model)
-    pretrained_name = _get(cfg.model, "pretrained_name", "distilbert-base-uncased")
-    num_labels = int(_get(cfg.model, "num_labels", 3))
-    max_length = int(_get(cfg.model, "max_length", 256))
-    init_source = init_dir or pretrained_name
+    model_cfg = getattr(cfg, "model", None)
+    init_dir, resume_ckpt = _resolve_init_from_hub(model_cfg)
+    pretrained_name = _get(model_cfg, "pretrained_name", "distilbert-base-uncased")
+    local_pretrained_dir = _resolve_pretrained_local(model_cfg, pretrained_name)
+    num_labels = int(_get(model_cfg, "num_labels", 3))
+    max_length = int(_get(model_cfg, "max_length", 256))
+    init_source = init_dir or local_pretrained_dir or pretrained_name
 
     tokenizer = AutoTokenizer.from_pretrained(init_source)
     model = AutoModelForSequenceClassification.from_pretrained(
@@ -653,74 +849,115 @@ def main():
         )
         push_to_hub = False
 
-    if not trainer_supported:
-        params = resolve_training_params(cfg, out_dir, push_to_hub=False)
-        run_basic_training_loop(
-            model,
-            tokenizer,
-            train_ds,
-            dev_ds,
-            frozen_eval_raw,
-            preprocess,
-            params,
-            class_weights,
-            _get(cfg.train, "sample_weight_column", ""),
-            out_dir,
-            model_dir,
-        )
-        return
+    mlflow = _load_mlflow()
+    mlflow_context = contextlib.nullcontext()
+    if mlflow:
+        tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
+        if tracking_uri:
+            mlflow.set_tracking_uri(tracking_uri)
+        experiment_name = os.getenv("MLFLOW_EXPERIMENT_NAME", "restar")
+        mlflow.set_experiment(experiment_name)
+        transformers_module = getattr(mlflow, "transformers", None)
+        if transformers_module and hasattr(transformers_module, "autolog"):
+            transformers_module.autolog()
+        mlflow_context = mlflow.start_run(run_name=run_name)
 
-    training_args = build_training_arguments(cfg, out_dir, push_to_hub)
+    with mlflow_context:
+        if mlflow:
+            flat_params = {k: _format_param(v) for k, v in _flatten_config(cfg).items()}
+            if flat_params:
+                mlflow.log_params(flat_params)
+            dvc_tags = _collect_dvc_tags(os.path.abspath("dvc.lock"))
+            if dvc_tags:
+                mlflow.set_tags(dvc_tags)
 
-    trainer = WeightedTrainer(
-        class_weights=class_weights,
-        sample_weight_column=_get(cfg.train, "sample_weight_column", ""),
-        model=model,
-        args=training_args,
-        data_collator=DataCollatorWithPadding(tokenizer=tokenizer),
-        train_dataset=train_ds,
-        eval_dataset=dev_ds,
-        compute_metrics=compute_metrics,
-    )
+        if not trainer_supported:
+            params = resolve_training_params(cfg, out_dir, push_to_hub=False)
+            run_basic_training_loop(
+                model,
+                tokenizer,
+                train_ds,
+                dev_ds,
+                frozen_eval_raw,
+                preprocess,
+                params,
+                class_weights,
+                _get(cfg.train, "sample_weight_column", ""),
+                out_dir,
+                model_dir,
+            )
+        else:
+            training_args = build_training_arguments(cfg, out_dir, push_to_hub)
 
-    if push_to_hub and hub_model_id:
-        trainer.add_callback(PushCheckpointsToHubCallback(repo_id=hub_model_id))
+            trainer = WeightedTrainer(
+                class_weights=class_weights,
+                sample_weight_column=_get(cfg.train, "sample_weight_column", ""),
+                model=model,
+                args=training_args,
+                data_collator=DataCollatorWithPadding(tokenizer=tokenizer),
+                train_dataset=train_ds,
+                eval_dataset=dev_ds,
+                compute_metrics=compute_metrics,
+            )
 
-    patience = int(_get(cfg.train, "early_stopping_patience", 2) or 0)
-    if patience > 0:
-        trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=patience))
+            if push_to_hub and hub_model_id:
+                trainer.add_callback(PushCheckpointsToHubCallback(repo_id=hub_model_id))
 
-    trainer.train(resume_from_checkpoint=resume_ckpt if resume_ckpt else None)
+            patience = int(_get(cfg.train, "early_stopping_patience", 2) or 0)
+            if patience > 0:
+                trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=patience))
 
-    trainer.save_model(model_dir)
-    tokenizer.save_pretrained(model_dir)
+            trainer.train(resume_from_checkpoint=resume_ckpt if resume_ckpt else None)
 
-    metrics_dev = trainer.evaluate(dev_ds)
-    with open(os.path.join(out_dir, "metrics_dev.json"), "w", encoding="utf-8") as handle:
-        json.dump(metrics_dev, handle, ensure_ascii=False, indent=2)
+            trainer.save_model(model_dir)
+            tokenizer.save_pretrained(model_dir)
 
-    if frozen_eval_raw is not None:
-        frozen_eval = frozen_eval_raw.map(
-            preprocess,
-            batched=True,
-            remove_columns=frozen_eval_raw.column_names,
-        )
-        metrics_eval = trainer.evaluate(frozen_eval)
-        with open(
-            os.path.join(out_dir, "metrics_eval.json"),
-            "w",
-            encoding="utf-8",
-        ) as handle:
-            json.dump(metrics_eval, handle, ensure_ascii=False, indent=2)
-    else:
-        logger.warning("Frozen eval skipped: dataset unavailable")
+            metrics_dev = trainer.evaluate(dev_ds)
+            with open(os.path.join(out_dir, "metrics_dev.json"), "w", encoding="utf-8") as handle:
+                json.dump(metrics_dev, handle, ensure_ascii=False, indent=2)
 
-    if push_to_hub and hub_model_id:
-        try:  # pragma: no cover - network side effects
-            trainer.create_model_card(model_name=hub_model_id, language="en")
-        except Exception:
-            pass
-        trainer.push_to_hub(commit_message="end of training")
+            if frozen_eval_raw is not None:
+                frozen_eval = frozen_eval_raw.map(
+                    preprocess,
+                    batched=True,
+                    remove_columns=frozen_eval_raw.column_names,
+                )
+                metrics_eval = trainer.evaluate(frozen_eval)
+                with open(
+                    os.path.join(out_dir, "metrics_eval.json"),
+                    "w",
+                    encoding="utf-8",
+                ) as handle:
+                    json.dump(metrics_eval, handle, ensure_ascii=False, indent=2)
+            else:
+                logger.warning("Frozen eval skipped: dataset unavailable")
+
+            if push_to_hub and hub_model_id:
+                try:  # pragma: no cover - network side effects
+                    trainer.create_model_card(model_name=hub_model_id, language="en")
+                except Exception:
+                    pass
+                trainer.push_to_hub(commit_message="end of training")
+
+        metrics_source = os.path.join(out_dir, "metrics_eval.json")
+        if not os.path.exists(metrics_source):
+            metrics_source = os.path.join(out_dir, "metrics_dev.json")
+        confusion_path = os.path.join(out_dir, "confusion_matrix.png")
+        _plot_confusion_from_metrics_file(metrics_source, confusion_path)
+
+        if mlflow:
+            _log_metrics_from_file(mlflow, os.path.join(out_dir, "metrics_dev.json"))
+            _log_metrics_from_file(mlflow, os.path.join(out_dir, "metrics_eval.json"))
+            if os.path.isdir(model_dir):
+                mlflow.log_artifacts(model_dir, artifact_path="model")
+            train_log = os.path.join(out_dir, "train.log")
+            if os.path.exists(train_log):
+                mlflow.log_artifact(train_log)
+            if os.path.exists(confusion_path):
+                mlflow.log_artifact(confusion_path)
+            dvc_lock = os.path.abspath("dvc.lock")
+            if os.path.exists(dvc_lock):
+                mlflow.log_artifact(dvc_lock)
 
 
 if __name__ == "__main__":

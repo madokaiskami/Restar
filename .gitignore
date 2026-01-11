@@ -2,3 +2,13 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 outputs/
+data/**
+!data/**/*.dvc
+mlruns/
+.dvc/cache/
+.dvc/config.local
+torchserve/model-store/*
+!torchserve/model-store/.gitkeep
+!torchserve/model-store/mymodel.mar.dvc
+torchserve/artifacts/model.pt
+dvc_token

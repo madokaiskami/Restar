@@ -1,0 +1,56 @@
+run_name: frozen_data
+random_seed: 42
+output_dir: "outputs"
+
+model:
+  pretrained_name: "distilbert-base-uncased"
+  pretrained_local_dir: "artifacts/pretrained/model"
+  num_labels: 3
+  max_length: 256
+
+train_stream:
+  enabled: true
+  source: "hf_stream_amazon"
+  categories:
+    - "Amazon_Fashion"
+    - "Books"
+    - "Baby_Products"
+    - "Cell_Phones_and_Accessories"
+    - "Electronics"
+    - "Pet_Supplies"
+    - "Sports_and_Outdoors"
+    - "Health_and_Household"
+  per_class_target: 150000
+  hf_shuffle_buffer: 20000
+  seed: 42
+  dedup: true
+  sample_text_min_words: 3
+  stop_when_full: true
+
+prepare:
+  out_train_parquet: "data/frozen/train.parquet"
+  out_dev_parquet: "data/frozen/dev.parquet"
+  out_eval_parquet: "data/frozen/eval.parquet"
+
+dev:
+  source: "hf_hub_parquet"
+  hf_repo_id: "Aurelianous/restar_v1.0_eval"
+  hf_glob: "data/dev-*.parquet"
+  hf_revision: "main"
+
+  max_rows: 0
+
+eval:
+  source: "hf_hub_parquet"
+  hf_repo_id: "Aurelianous/restar_v1.0_eval"
+  hf_glob: "data/eval-*.parquet"
+  hf_revision: "main"
+  max_rows: 0
+
+blocklist:
+  paths: []
+  hf_repo_id: "Aurelianous/restar_v1.0_eval"
+  hf_filename: "data/restar_blocklist_v1.0.txt"
+  hf_revision: "main"
+  hf_token_env: "HF_TOKEN"
+  write_seen_to: "data/blocklists/seen_ids.txt"

@@ -9,7 +9,7 @@ EXPECTED_COLUMNS = ["text", "rating", "title", "asin", "product_category"]
 
 
 def _load_script_module():
-    script_path = Path(__file__).resolve().parents[1] / "scripts" / "split_and_push_to_hf.py"
+    script_path = Path(__file__).resolve().parents[1] / "tools" / "split_and_push_to_hf.py"
     spec = importlib.util.spec_from_file_location("split_and_push_to_hf", script_path)
     module = importlib.util.module_from_spec(spec)
     assert spec and spec.loader, "failed to load split_and_push_to_hf module"

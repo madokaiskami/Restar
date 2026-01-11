@@ -1,0 +1,90 @@
+stages:
+  fetch_model:
+    cmd: python -m restar.fetch_pretrained --config ${restar.dvc_config}
+    deps:
+      - ${restar.dvc_config}
+      - src/restar/config.py
+      - src/restar/fetch_pretrained.py
+      - src/restar/utils.py
+    params:
+      - restar.dvc_config
+    outs:
+      - artifacts/pretrained/model/
+
+  freeze_data:
+    cmd: python -m restar.prepare --config configs/data_frozen.yaml
+    deps:
+      - configs/data_frozen.yaml
+      - src/restar/config.py
+      - src/restar/data.py
+      - src/restar/prepare.py
+      - src/restar/utils.py
+    outs:
+      - data/frozen/train.parquet
+      - data/frozen/dev.parquet
+      - data/frozen/eval.parquet
+
+  prepare:
+    cmd: python -m restar.prepare --config ${restar.dvc_config}
+    deps:
+      - ${restar.dvc_config}
+      - data/frozen/train.parquet
+      - data/frozen/dev.parquet
+      - data/frozen/eval.parquet
+      - src/restar/config.py
+      - src/restar/data.py
+      - src/restar/prepare.py
+      - src/restar/utils.py
+    params:
+      - restar.dvc_config
+    outs:
+      - data/raw/train.parquet
+      - data/raw/dev.parquet
+      - data/raw/eval.parquet
+
+  train:
+    cmd: python -m restar.train --config ${restar.dvc_config}
+    deps:
+      - artifacts/pretrained/model/
+      - ${restar.dvc_config}
+      - data/raw/train.parquet
+      - data/raw/dev.parquet
+      - src/restar/config.py
+      - src/restar/data.py
+      - src/restar/train.py
+      - src/restar/utils.py
+    params:
+      - restar.dvc_config
+    outs:
+      - outputs/dvc_run/model
+      - outputs/dvc_run/metrics_dev.json
+      - outputs/dvc_run/train.log
+
+  evaluate:
+    cmd: python -m restar.evaluate_dataset --config ${restar.dvc_config}
+    deps:
+      - ${restar.dvc_config}
+      - data/raw/eval.parquet
+      - outputs/dvc_run/model
+      - src/restar/config.py
+      - src/restar/data.py
+      - src/restar/evaluate_dataset.py
+      - src/restar/utils.py
+    params:
+      - restar.dvc_config
+    outs:
+      - outputs/dvc_run/metrics_eval.json
+      - outputs/dvc_run/confusion_matrix.png
+
+  export_torchserve:
+    cmd: python tools/export_torchserve.py --model_dir outputs/dvc_run/model --artifacts_dir torchserve/artifacts --model_store torchserve/model-store --handler torchserve/handler.py
+    deps:
+      - ${restar.dvc_config}
+      - outputs/dvc_run/model/
+      - torchserve/handler.py
+      - tools/export_torchserve.py
+    params:
+      - restar.dvc_config
+    outs:
+      - torchserve/artifacts/model.pt
+      - torchserve/model-store/mymodel.mar

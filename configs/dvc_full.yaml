@@ -1,0 +1,70 @@
+run_name: dvc_run
+random_seed: 42
+output_dir: "outputs"
+
+model:
+  pretrained_name: "distilbert-base-uncased"
+  pretrained_local_dir: "artifacts/pretrained/model"
+  num_labels: 3
+  max_length: 256
+
+train:
+  batch_size: 16
+  logging_steps: 50
+  learning_rate: 3.0e-5
+  num_train_epochs: 3
+  weight_decay: 0.01
+  warmup_ratio: 0.1
+  eval_strategy: "epoch"
+  save_strategy: "epoch"
+  save_total_limit: 2
+  early_stopping_patience: 2
+  push_to_hub: false
+
+train_stream:
+  enabled: true
+  source: "hf_stream_amazon"
+  categories:
+    - "Amazon_Fashion"
+    - "Books"
+    - "Baby_Products"
+    - "Cell_Phones_and_Accessories"
+    - "Electronics"
+    - "Pet_Supplies"
+    - "Sports_and_Outdoors"
+    - "Health_and_Household"
+  per_class_target: 150000
+  hf_shuffle_buffer: 20000
+  seed: 42
+  dedup: true
+  sample_text_min_words: 3
+  stop_when_full: true
+
+prepare:
+  out_train_parquet: "data/raw/train.parquet"
+  out_dev_parquet: "data/raw/dev.parquet"
+  out_eval_parquet: "data/raw/eval.parquet"
+
+dev:
+  source: "hf_hub_parquet"
+  hf_repo_id: "Aurelianous/restar_v1.0_eval"
+  hf_glob: "data/dev-*.parquet"
+  hf_revision: "main"
+  local_parquet: "data/raw/dev.parquet"
+  max_rows: 0
+
+eval:
+  source: "hf_hub_parquet"
+  hf_repo_id: "Aurelianous/restar_v1.0_eval"
+  hf_glob: "data/eval-*.parquet"
+  hf_revision: "main"
+  local_parquet: "data/raw/eval.parquet"
+  max_rows: 0
+
+blocklist:
+  paths: []
+  hf_repo_id: "Aurelianous/restar_v1.0_eval"
+  hf_filename: "data/restar_blocklist_v1.0.txt"
+  hf_revision: "main"
+  hf_token_env: "HF_TOKEN"
+  write_seen_to: "data/blocklists/seen_ids.txt"

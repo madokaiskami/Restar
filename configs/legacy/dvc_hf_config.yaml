@@ -1,0 +1,75 @@
+run_name: dvc_run
+random_seed: 42
+
+# DVC-oriented config that materializes train/dev/eval parquet files from
+# Hugging Face datasets (streaming for train).
+
+output_dir: "outputs"
+
+data:
+  source: "hf_stream_amazon"
+  categories: ["Books", "Electronics", "Sports_and_Outdoors"]
+
+model:
+  pretrained_name: "prajjwal1/bert-tiny"
+  pretrained_local_dir: "artifacts/pretrained/prajjwal1-bert-tiny"
+  num_labels: 3
+  max_length: 256
+
+train:
+  batch_size: 8
+  logging_steps: 2
+  learning_rate: 5.0e-5
+  num_train_epochs: 1
+  weight_decay: 0.01
+  warmup_ratio: 0.06
+  early_stopping_patience: 2
+  save_total_limit: 2
+  push_to_hub: false
+
+train_stream:
+  enabled: true
+  source: "hf_stream_amazon"
+  # Hugging Face dataset details (used by src/restar/data.py streaming helpers).
+  hf_dataset: "McAuley-Lab/Amazon-Reviews-2023"
+  hf_config_template: "raw_review_{category}"
+  hf_split: "full"
+  hf_text_field: "text"
+  hf_rating_field: "rating"
+  hf_title_field: "title"
+  hf_asin_field: "asin"
+  hf_category_field: "product_category"
+  local_parquet: "data/raw/train.parquet"
+  categories: ["Books", "Electronics", "Sports_and_Outdoors"]
+  per_class_target: 500
+  hf_shuffle_buffer: 2000
+  seed: 42
+  dedup: true
+  sample_text_min_words: 3
+  stop_when_full: true
+
+blocklist:
+  paths: []
+  hf_repo_id: "Aurelianous/restar_v1.0_eval"
+  hf_filename: "data/restar_blocklist_v1.0.txt"
+  hf_revision: "main"
+  hf_token_env: "HF_TOKEN"
+  write_seen_to: "data/blocklists/seen_ids.txt"
+
+prepare:
+  out_train_parquet: "data/raw/train.parquet"
+  out_dev_parquet: "data/raw/dev.parquet"
+  out_eval_parquet: "data/raw/eval.parquet"
+
+dev:
+  source: "hf_hub_parquet"
+  hf_repo_id: "Aurelianous/restar_v1.0_eval"
+  hf_glob: "data/dev-*.parquet"
+  hf_revision: "main"
+  max_rows: 0
+
+eval:
+  source: "hf_hub_parquet"
+  hf_repo_id: "Aurelianous/restar_v1.0_eval"
+  hf_glob: "data/eval-*.parquet"
+  hf_revision: "main"

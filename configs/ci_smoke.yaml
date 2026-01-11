@@ -1,0 +1,89 @@
+run_name: dvc_run
+random_seed: 13
+output_dir: "outputs"
+
+model:
+  pretrained_name: hf-internal-testing/tiny-random-bert
+  max_length: 64
+  num_labels: 3
+
+train_stream:
+  source: synthetic
+  rows:
+    - text: "Loved this speaker"
+      rating: 5
+      title: "Great"
+      asin: "asin_pos_1"
+      product_category: "Electronics"
+    - text: "Battery life was fine"
+      rating: 3
+      title: "Okay"
+      asin: "asin_neu_1"
+      product_category: "Electronics"
+    - text: "Terrible quality overall"
+      rating: 1
+      title: "Bad"
+      asin: "asin_neg_1"
+      product_category: "Electronics"
+    - text: "Works as expected"
+      rating: 4
+      title: "Solid"
+      asin: "asin_pos_2"
+      product_category: "Electronics"
+    - text: "Packaging was damaged"
+      rating: 2
+      title: "Poor"
+      asin: "asin_neg_2"
+      product_category: "Electronics"
+    - text: "Satisfactory purchase"
+      rating: 3
+      title: "Average"
+      asin: "asin_neu_2"
+      product_category: "Electronics"
+
+train:
+  num_train_epochs: 1
+  per_device_train_batch_size: 2
+  per_device_eval_batch_size: 2
+  logging_steps: 1
+  save_strategy: "no"
+  eval_strategy: "epoch"
+  save_total_limit: 1
+
+prepare:
+  out_train_parquet: "data/raw/train.parquet"
+  out_dev_parquet: "data/raw/dev.parquet"
+  out_eval_parquet: "data/raw/eval.parquet"
+
+dev:
+  source: synthetic
+  rows:
+    - text: "Good replacement"
+      rating: 4
+      title: "Nice"
+      asin: "asin_dev_pos"
+      product_category: "Electronics"
+    - text: "Not impressed"
+      rating: 2
+      title: "Sad"
+      asin: "asin_dev_neg"
+      product_category: "Electronics"
+
+eval:
+  source: synthetic
+  rows:
+    - text: "Would buy again"
+      rating: 5
+      title: "Happy"
+      asin: "asin_eval_pos"
+      product_category: "Electronics"
+    - text: "Probably skip next time"
+      rating: 3
+      title: "Neutral"
+      asin: "asin_eval_neu"
+      product_category: "Electronics"
+    - text: "Completely broken"
+      rating: 1
+      title: "Angry"
+      asin: "asin_eval_neg"
+      product_category: "Electronics"
