@@ -9,33 +9,33 @@ stages:
       size: 1256
     - path: src/restar/config.py
       hash: md5
-      md5: 1fc19d9f381555a1ea425ee2aad68040
-      size: 625
+      md5: 6b97eefa0034a860485e75d8670fb130
+      size: 605
     - path: src/restar/data.py
       hash: md5
-      md5: 76056565a65245f1b0b6787fe5d503ac
-      size: 15848
+      md5: ae9bb677599572b81d47bd4f1c42bf0c
+      size: 15410
     - path: src/restar/prepare.py
       hash: md5
       md5: 020322ace2dab0b3b92b27d8ef50741d
       size: 6860
     - path: src/restar/utils.py
       hash: md5
-      md5: cd20ff37a714818c5515a67252f3f4c6
-      size: 6057
+      md5: 7f8b0abfa17ed7075d1dc01b0bb6b91e
+      size: 5872
     outs:
-    - path: data/frozen/train.parquet
-      hash: md5
-      md5: b06c0151c7ebe0a743c896c81295540a
-      size: 3946
     - path: data/frozen/dev.parquet
       hash: md5
-      md5: b06c0151c7ebe0a743c896c81295540a
-      size: 3946
+      md5: 7227132ca19bb6f40c5b5e3354da37be
+      size: 71451701
     - path: data/frozen/eval.parquet
       hash: md5
-      md5: b06c0151c7ebe0a743c896c81295540a
-      size: 3946
+      md5: af9268a02b9864e83d2f6eaf064063c6
+      size: 213440239
+    - path: data/frozen/train.parquet
+      hash: md5
+      md5: 3154106e052c2fee90662d3282e4af8d
+      size: 59874966
   prepare:
     cmd: python -m restar.prepare --config configs/dvc_smoke.yaml
     deps:
@@ -43,56 +43,56 @@ stages:
       hash: md5
       md5: 30c26e9ff2717cfbbd60345875a4ef58
       size: 794
-    - path: data/frozen/train.parquet
-      hash: md5
-      md5: b06c0151c7ebe0a743c896c81295540a
-      size: 3946
     - path: data/frozen/dev.parquet
       hash: md5
-      md5: b06c0151c7ebe0a743c896c81295540a
-      size: 3946
+      md5: 7227132ca19bb6f40c5b5e3354da37be
+      size: 71451701
     - path: data/frozen/eval.parquet
       hash: md5
-      md5: b06c0151c7ebe0a743c896c81295540a
-      size: 3946
+      md5: af9268a02b9864e83d2f6eaf064063c6
+      size: 213440239
+    - path: data/frozen/train.parquet
+      hash: md5
+      md5: 3154106e052c2fee90662d3282e4af8d
+      size: 59874966
     - path: src/restar/config.py
       hash: md5
-      md5: 1fc19d9f381555a1ea425ee2aad68040
-      size: 625
+      md5: 6b97eefa0034a860485e75d8670fb130
+      size: 605
     - path: src/restar/data.py
       hash: md5
-      md5: 76056565a65245f1b0b6787fe5d503ac
-      size: 15848
+      md5: ae9bb677599572b81d47bd4f1c42bf0c
+      size: 15410
     - path: src/restar/prepare.py
       hash: md5
       md5: 020322ace2dab0b3b92b27d8ef50741d
       size: 6860
     - path: src/restar/utils.py
       hash: md5
-      md5: cd20ff37a714818c5515a67252f3f4c6
-      size: 6057
+      md5: 7f8b0abfa17ed7075d1dc01b0bb6b91e
+      size: 5872
     params:
       params.yaml:
         restar.dvc_config: configs/dvc_smoke.yaml
     outs:
     - path: data/raw/dev.parquet
       hash: md5
-      md5: c4e58c7663da1d87e9cba0a3a2b11579
-      size: 35019
+      md5: 941087de38c8a70e65fd5b3f6ebbace0
+      size: 51490
     - path: data/raw/eval.parquet
       hash: md5
-      md5: af9268a02b9864e83d2f6eaf064063c6
-      size: 213440239
+      md5: c1c36aa754aca0d4b08fc8105a33dc74
+      size: 55490
     - path: data/raw/train.parquet
       hash: md5
-      md5: 6f995fcfb1efcd603b3ef26933f99fdb
-      size: 60957410
+      md5: 0fe8090e4963d1e0ecdeb223f12ab412
+      size: 76049
   train:
     cmd: python -m restar.train --config configs/dvc_smoke.yaml
     deps:
     - path: artifacts/pretrained/model/
       hash: md5
-      md5: c5407dd8394d0f3c73cf1a516582ee13.dir
+      md5: b00f4dd3b1f901ae71cff7f134a4c1f2.dir
       size: 18495004
       nfiles: 7
     - path: configs/dvc_smoke.yaml
@@ -101,45 +101,45 @@ stages:
       size: 794
     - path: data/raw/dev.parquet
       hash: md5
-      md5: 7227132ca19bb6f40c5b5e3354da37be
-      size: 71451701
+      md5: 941087de38c8a70e65fd5b3f6ebbace0
+      size: 51490
     - path: data/raw/train.parquet
       hash: md5
-      md5: f8e6856a5fcbb1fb1a28037e4f7d8403
-      size: 61979
+      md5: 0fe8090e4963d1e0ecdeb223f12ab412
+      size: 76049
     - path: src/restar/config.py
       hash: md5
-      md5: 1fc19d9f381555a1ea425ee2aad68040
-      size: 625
+      md5: 6b97eefa0034a860485e75d8670fb130
+      size: 605
     - path: src/restar/data.py
       hash: md5
-      md5: 76056565a65245f1b0b6787fe5d503ac
-      size: 15848
+      md5: ae9bb677599572b81d47bd4f1c42bf0c
+      size: 15410
     - path: src/restar/train.py
       hash: md5
       md5: b01600b0935cb730539574452e35d635
       size: 34420
     - path: src/restar/utils.py
       hash: md5
-      md5: cd20ff37a714818c5515a67252f3f4c6
-      size: 6057
+      md5: 7f8b0abfa17ed7075d1dc01b0bb6b91e
+      size: 5872
     params:
       params.yaml:
         restar.dvc_config: configs/dvc_smoke.yaml
     outs:
     - path: outputs/dvc_run/metrics_dev.json
       hash: md5
-      md5: 1a819998c14205f87e8d3e814b95d4aa
-      size: 430
+      md5: ae1d3bbd8212e20059cb90345f580432
+      size: 397
     - path: outputs/dvc_run/model
       hash: md5
-      md5: 1c9e001ef0edbf7f2c7bafdb0419f9d7.dir
+      md5: aa594a13bbc4715c2f537004dbdc8408.dir
       size: 18501543
       nfiles: 7
     - path: outputs/dvc_run/train.log
       hash: md5
-      md5: 4c4c691bd80073b75b2447a7f3b798ef
-      size: 125
+      md5: d41d8cd98f00b204e9800998ecf8427e
+      size: 0
   evaluate:
     cmd: python -m restar.evaluate_dataset --config configs/dvc_smoke.yaml
     deps:
@@ -149,48 +149,48 @@ stages:
       size: 794
     - path: data/raw/eval.parquet
       hash: md5
-      md5: af9268a02b9864e83d2f6eaf064063c6
-      size: 213440239
+      md5: c1c36aa754aca0d4b08fc8105a33dc74
+      size: 55490
     - path: outputs/dvc_run/model
       hash: md5
-      md5: 1c9e001ef0edbf7f2c7bafdb0419f9d7.dir
+      md5: aa594a13bbc4715c2f537004dbdc8408.dir
       size: 18501543
       nfiles: 7
     - path: src/restar/config.py
       hash: md5
-      md5: 1fc19d9f381555a1ea425ee2aad68040
-      size: 625
+      md5: 6b97eefa0034a860485e75d8670fb130
+      size: 605
     - path: src/restar/data.py
       hash: md5
-      md5: 76056565a65245f1b0b6787fe5d503ac
-      size: 15848
+      md5: ae9bb677599572b81d47bd4f1c42bf0c
+      size: 15410
     - path: src/restar/evaluate_dataset.py
       hash: md5
-      md5: 033365284a60688b1fab09a0c2c6d12e
-      size: 4537
+      md5: 453a8db069946b890f45d30770998122
+      size: 4728
     - path: src/restar/utils.py
       hash: md5
-      md5: cd20ff37a714818c5515a67252f3f4c6
-      size: 6057
+      md5: 7f8b0abfa17ed7075d1dc01b0bb6b91e
+      size: 5872
     params:
       params.yaml:
         restar.dvc_config: configs/dvc_smoke.yaml
     outs:
     - path: outputs/dvc_run/confusion_matrix.png
       hash: md5
-      md5: 4c15b66982cc9b19cbbe5b28a29fb63a
-      size: 21683
+      md5: 5909582b1500a860af5831ef3db529f5
+      size: 12699
     - path: outputs/dvc_run/metrics_eval.json
       hash: md5
-      md5: 3f0cf1ead1f6d9b07b2b56c9338b3fdd
-      size: 464
+      md5: 34ee2e8644b40bfe50450b26382026fc
+      size: 421
   fetch_model:
-    cmd: python -m restar.fetch_pretrained --config configs/dvc_full.yaml
+    cmd: python -m restar.fetch_pretrained --config configs/dvc_smoke.yaml
     deps:
-    - path: configs/dvc_full.yaml
+    - path: configs/dvc_smoke.yaml
       hash: md5
-      md5: b19ad212d11f61a093155ec449b747d0
-      size: 1577
+      md5: 30c26e9ff2717cfbbd60345875a4ef58
+      size: 794
     - path: src/restar/config.py
       hash: md5
       md5: 6b97eefa0034a860485e75d8670fb130
@@ -205,12 +205,12 @@ stages:
       size: 5872
     params:
       params.yaml:
-        restar.dvc_config: configs/dvc_full.yaml
+        restar.dvc_config: configs/dvc_smoke.yaml
     outs:
     - path: artifacts/pretrained/model/
       hash: md5
-      md5: ecadaafaef69380c20cce78126317e69.dir
-      size: 268780664
+      md5: b00f4dd3b1f901ae71cff7f134a4c1f2.dir
+      size: 18495004
       nfiles: 7
   export_torchserve:
     cmd: python tools/export_torchserve.py --model_dir outputs/dvc_run/model 
@@ -223,26 +223,26 @@ stages:
       size: 794
     - path: outputs/dvc_run/model/
       hash: md5
-      md5: 1c9e001ef0edbf7f2c7bafdb0419f9d7.dir
+      md5: aa594a13bbc4715c2f537004dbdc8408.dir
       size: 18501543
       nfiles: 7
     - path: tools/export_torchserve.py
       hash: md5
-      md5: 3f4416cb5fced41fa76f895dfa59c313
-      size: 3677
+      md5: 5fcc971010597c5c97980d59c0264bd5
+      size: 3542
     - path: torchserve/handler.py
       hash: md5
-      md5: 0271ab4afa87dc21de3cf57baa0f2b93
-      size: 3462
+      md5: 8efd40baaec76a930316cae97ad7f7ba
+      size: 3364
     params:
       params.yaml:
         restar.dvc_config: configs/dvc_smoke.yaml
     outs:
     - path: torchserve/artifacts/model.pt
       hash: md5
-      md5: 7884ad967b8074da2fed034325ab50d4
+      md5: 4d1cf89c0d5ac04aa8fa6cdb6eca270c
       size: 17558922
     - path: torchserve/model-store/mymodel.mar
       hash: md5
-      md5: 90cf3647e8df0820ac33c99a46d7439e
-      size: 16584790
+      md5: e7a31e74e6750623651bc881e11d7f21
+      size: 16584351

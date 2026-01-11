@@ -1,2 +1,2 @@
 restar:
-  dvc_config: configs/dvc_full.yaml
+  dvc_config: configs/dvc_smoke.yaml
